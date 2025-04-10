@@ -2,10 +2,13 @@
   "name": "backend_for_model",
   "version": "1.0.0",
   "description": "backend api's",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon server.js"
+    "start": "nodemon server.js",
+    "build": "npm run install-python-dependencies && npm run build-node",
+    "install-python-dependencies": "python3 -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt",
+    "build-node": "node build.js"
   },
   "author": "",
   "license": "ISC",
