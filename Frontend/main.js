@@ -1,72 +1,129 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron';
-
-// import dotenv from 'dotenv'
-// import 'dotenv/config'
-
+import { spawn } from 'child_process';
 import axios from 'axios';
 import { writeFile, createReadStream, unlinkSync, existsSync } from 'node:fs';
 import { writeFile as writeFilePromise } from 'node:fs/promises';
 import FormData from 'form-data';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-
-// dotenv.config()
-
-
-// function createWindow() {
-//     const mainWindow = new BrowserWindow({
-//         width: 800,
-//         height: 600,
-//         webPreferences: {
-//             preload: path.join(__dirname, 'preload.js'), // Optional if you need preload scripts
-//             nodeIntegration: true,
-//             contextIsolation: false,
-//         },
-//     });
-
-//     mainWindow.loadURL(`file://${path.join(__dirname, '../renderer/app.jsx')}`);
-// }
-
-// app.whenReady().then(() => {
-//     createWindow();
-
-//     app.on('activate', () => {
-//         if (BrowserWindow.getAllWindows().length === 0) {
-//             createWindow();
-//         }
-//     });
-// });
-
-// app.on('window-all-closed', () => {
-//     if (process.platform !== 'darwin') {
-//         app.quit();
-//     }
-// });
+import { console } from 'node:inspector';
 
 
 let mainWindow;
 
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+    app.quit();
+} else {
+    // Handle second instance (for protocol activation)
+    app.on('second-instance', (event, commandLine, workingDirectory) => {
+        // Someone tried to run a second instance, we should focus our window
+        if (mainWindow) {
+            if (mainWindow.isMinimized()) mainWindow.restore();
+            mainWindow.focus();
+
+            // Extract any data from the URL
+            const gotUrl = commandLine.pop();
+            if (gotUrl.includes('myapp://')) {
+                handleProtocolUrl(gotUrl);
+            }
+        }
+    });
+}
+
+// let backendProcess = null;
+
+// function startBackendServer() {
+//     const backendPath = app.isPackaged
+//         ? path.join(process.resourcesPath, 'backend', 'server.js')
+//         : path.join(path.dirname(__dirname), 'backend', 'server.js');
+
+//     console.log('Starting backend from:', backendPath);
+
+//     // Start the Node.js backend
+//     backendProcess = spawn('node', [backendPath], {
+//         stdio: 'inherit'
+//     });
+
+//     backendProcess.on('error', (error) => {
+//         console.error('Failed to start backend:', error);
+//     });
+
+//     backendProcess.on('close', (code) => {
+//         console.log(`Backend process exited with code ${code}`);
+//     });
+// }
+
 function createWindow() {
     mainWindow = new BrowserWindow({
         autoHideMenuBar: true,
-        width: 800,
-        height: 600,
+        width: 1000,
+        height: 800,
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false,
+            webSecurity: false
         },
     });
 
-    mainWindow.loadFile('login.html');
+    mainWindow.loadFile('./login.html');
+    mainWindow.setMenu(null);
+    // mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+    //     console.error('Failed to load page:', errorCode, errorDescription);
+    // });
+
+    // // console.log('Loading from path:', indexPath);
+    // mainWindow.webContents.on('dom-ready', () => {
+    //     console.log('DOM is ready');
+    // });
+
+    // mainWindow.webContents.openDevTools();
 }
 
 // app.whenReady().then(createWindow);
 
+function handleProtocolUrl(url) {
+    try {
+        const parsedUrl = new URL(url);
+        console.log('Protocol URL handled:', parsedUrl);
+
+        if (parsedUrl.protocol === 'myapp:') {
+            const hostname = parsedUrl.hostname;
+            const searchParams = parsedUrl.searchParams;
+
+            // Get payment-related parameters
+            const sessionId = searchParams.get('session_id');
+            const paymentStatus = hostname; // 'success' or 'cancel'
+
+            if (mainWindow && mainWindow.webContents) {
+                // Send data to the renderer process
+                mainWindow.webContents.send('payment-completed', {
+                    status: paymentStatus,
+                    sessionId: sessionId
+                });
+
+                // Navigate based on payment status
+                if (paymentStatus === 'success') {
+                    mainWindow.loadFile('./dashboard.html');
+                } else if (paymentStatus === 'cancel') {
+                    mainWindow.loadFile('./subError.html');
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error handling protocol URL:', error);
+    }
+}
+
 app.whenReady().then(() => {
-    createWindow();
+
+    // startBackendServer();
+
+
 
     // Set the app as the default protocol client for "your-electron-app"
-    // app.setAsDefaultProtocolClient('myapp');
+
     // Register custom protocol
     if (process.defaultApp) {
         // For development, use this for debugging when running with 'electron' binary
@@ -76,6 +133,13 @@ app.whenReady().then(() => {
     } else {
         // For packaged Electron apps
         app.setAsDefaultProtocolClient('myapp');
+    }
+
+    createWindow();
+
+    const gotUrl = process.argv.find(arg => arg.startsWith('myapp://'));
+    if (gotUrl) {
+        handleProtocolUrl(gotUrl);
     }
 });
 
@@ -98,18 +162,20 @@ app.whenReady().then(() => {
 
 app.on("open-url", (event, url) => {
     event.preventDefault();
-    const params = new URL(url);
-    console.log('URL opened:', params);
-    if (params.protocol === "myapp:") {
-        if (params.hostname === "success") {
-            // Handle success (e.g., show confirmation page)
-            // window.location = response.sessionUrl;
-            window.location = 'dashboard.html'
-        } else if (params.hostname === "cancel") {
-            // Handle cancellation (e.g., show retry message)
-            window.location = 'subError.html'
-        }
-    }
+    handleProtocolUrl(url);
+    // const params = new URL(url);
+    // console.log('URL opened:', params);
+    // if (params.protocol === "myapp:") {
+    //     if (params.hostname === "success") {
+    //         // Handle success (e.g., show confirmation page)
+    //         // window.location = response.sessionUrl;'
+    //         console.log("Success: ", params.hostname)
+    //         window.location = 'dashboard.html'
+    //     } else if (params.hostname === "cancel") {
+    //         // Handle cancellation (e.g., show retry message)
+    //         window.location = 'subError.html'
+    //     }
+    // }
 });
 
 app.on('window-all-closed', () => {
@@ -124,9 +190,19 @@ app.on('activate', () => {
     }
 });
 
+// app.on('will-quit', () => {
+//     if (backendProcess) {
+//         backendProcess.kill();
+//         backendProcess = null;
+//     }
+// });
 
-const API_URL = 'http://127.0.0.1:3000/api' || process.env.API_URL_BACKEND_API; // Replace with your backend URL
-// const API_URL = process.env.API_URL_BACKEND_API; // Replace with your backend URL
+// http://127.0.0.1:3000
+// http://34.201.129.119
+
+// In main.js
+// const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+const API_URL = 'http://localhost:3000/api'
 
 ipcMain.on('register', async (event, userData) => {
     try {
@@ -144,51 +220,7 @@ ipcMain.on('register', async (event, userData) => {
     }
 });
 
-// ipcMain.on('login', async (event, credentials) => {
-//     // Check if the keys exist before deleting
 
-//     console.log('Old authToken:', store.get('authToken'));
-//     console.log('Old userEmail:', store.get('userEmail'));
-
-//     if (store.has('authToken')) {
-//         store.delete('authToken');
-//     }
-//     if (store.has('userEmail')) {
-//         store.delete('userEmail');
-//     }
-
-//     try {
-//         console.log(credentials);
-//         const response = await axios.post(`${API_URL}/login`, {
-//             email: credentials.email,
-//             password: credentials.password
-//         });
-
-//         const token = response.data.token;
-
-//         // Set new values
-//         store.set('authToken', token);
-//         store.set('userEmail', credentials.email);
-
-//         // Log the values to check if they're set correctly
-
-
-//         event.reply('login-response', {
-//             success: true,
-//             message: response.data.message, // Make sure this is correct
-//             userId: response.data.userId,
-//             isVerified: response.data.isVerified,
-//             hasSubscription: response.data.hasSubscription
-//         });
-
-//     } catch (error) {
-//         console.log(error);
-//         event.reply('login-response', {
-//             success: false,
-//             message: error.response?.data.message || error.response?.data || 'Login failed'
-//         });
-//     }
-// });
 
 ipcMain.on('login', async (event, credentials) => {
     console.log('Login attempt for:', credentials.email);
@@ -290,35 +322,6 @@ ipcMain.on("activate-trial", async (event, data) => {
     }
 });
 
-// ipcMain.on('create-subscription', async (event, data) => {
-//     try {
-//         // Make an API call to your backend server
-//         const response = await axios.post(`${API_URL}/payment-checkout`, {
-//             // paymentMethodId: data.paymentMethodId,
-//             // email: data.email,
-//             // name: data.name,
-//             priceId: data.priceId,
-//             // token: data.token // Assuming you need to pass the auth token
-//         }, {
-//             headers: {
-//                 'Authorization': `Bearer ${data.token}`,
-//                 'Content-Type': 'application/json'
-//             }
-//         });
-
-//         if (response.data.success) {
-//             event.reply('subscription-result', {
-//                 success: true,
-//                 clientSecret: response.data.session // If your API returns this
-//             });
-//         } else {
-//             throw new Error(response.data.message || 'Subscription creation failed');
-//         }
-//     }
-//     catch (error) {
-//         event.reply('subscription-result', { success: false, message: error.response?.data.message || error.response?.data || 'Error in the payment checkout' });
-//     }
-// });
 
 
 
@@ -328,7 +331,8 @@ ipcMain.on('create-checkout-session', async (event, data) => {
         const response = await axios.post(`${API_URL}/payment-checkout`,
             {
                 email: data.email,
-                priceId: data.priceId
+                priceId: data.priceId,
+
             },
             {
                 headers: {
@@ -406,50 +410,7 @@ ipcMain.on("yearly-subscription", async (event, data) => {
     }
 });
 
-// ipcMain.on('remove-background', async (event, data) => {
-//     try {
-//         console.log('Starting background removal process...');
 
-//         // Create FormData
-//         const formData = new FormData();
-
-//         // Convert base64 to buffer and append directly to FormData
-//         const imageBuffer = Buffer.from(data.imageBuffer, 'base64');
-//         formData.append('files', imageBuffer, {
-//             filename: data.fileName,
-//             contentType: 'image/png'
-//         });
-
-//         console.log('Sending request...');
-//         const response = await axios.post(
-//             'http://localhost:3000/imageModel/remove-background',
-//             formData,
-//             {
-//                 headers: {
-//                     'Authorization': `Bearer ${data.token}`,
-//                     ...formData.getHeaders()
-//                 },
-//                 maxContentLength: Infinity,
-//                 maxBodyLength: Infinity
-//             }
-//         );
-//         console.log('Request completed');
-
-//         // Send the entire result array
-//         event.reply("remove-background-result", {
-//             success: true,
-//             images: response.data.result,  // This should be an array of {filename, base64} objects
-//             message: response.data.message,
-//         });
-//     }
-//     catch (error) {
-//         console.error('Final error catch:', error);
-//         event.reply('remove-background-result', {
-//             success: false,
-//             message: error.response?.data?.message || error.message || 'Error processing the image'
-//         });
-//     }
-// });
 
 const requestQueue = [];
 const processedCache = new Map();
@@ -787,7 +748,7 @@ ipcMain.on('remove-dummy', async (event, data) => {
 
             // Make request to backend
             const response = await axios.post(
-                'http://localhost:8000/remove-dummy',
+                'http://localhost:5000/remove-dummy',
                 formData,
                 {
                     headers: {
@@ -907,62 +868,6 @@ ipcMain.on('remove-dummy', async (event, data) => {
 //     }
 // }
 
-// ipcMain.on('remove-background-image', async (event, data) => {
-//     requestQueue.push({ event, data });
-//     console.log("Sending picture ")
-//     processNextInQueueImage();
-//     console.log("Picture recieved")
-// });
-
-// Modifications for main.js
-
-// async function processNextInQueue() {
-//     if (isProcessing || requestQueue.length === 0) return;
-
-//     isProcessing = true;
-//     const { event, data } = requestQueue.shift();
-
-//     try {
-//         const formData = new FormData();
-
-//         data.images.forEach((imageData, index) => {
-//             const imageBuffer = Buffer.from(imageData.base64, 'base64');
-//             formData.append('files', imageBuffer, {
-//                 filename: imageData.fileName,
-//                 contentType: 'image/png'
-//             });
-//         });
-
-//         const response = await axios.post(
-//             'http://localhost:3000/imageModel/remove-background',
-//             formData,
-//             {
-//                 headers: {
-//                     'Authorization': `Bearer ${data.token}`,
-//                     ...formData.getHeaders()
-//                 },
-//                 maxContentLength: Infinity,
-//                 maxBodyLength: Infinity
-//             }
-//         );
-
-//         // Handle multiple images
-
-//         event.reply("remove-background-result", {
-//             success: true,
-//             images: response.data.result,
-//             message: response.data.message,
-//         });
-//     } catch (error) {
-//         event.reply('remove-background-result', {
-//             success: false,
-//             message: error.response?.data?.message || error.message
-//         });
-//     } finally {
-//         isProcessing = false;
-//         processNextInQueue();
-//     }
-// }
 
 // Handle file saving
 ipcMain.on('save-file', async (event, filePath) => {

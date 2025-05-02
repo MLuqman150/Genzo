@@ -26,7 +26,9 @@ mongoose
 
 app.use(
   cors({
-    origin: "*", // Allow all origins for local testing
+    origin: ["*", "file://", "app://"], // Allow all origins for local testing
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+    credentials: true
   })
 );
 

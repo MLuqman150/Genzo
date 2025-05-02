@@ -296,7 +296,7 @@
             z-index: 2000;
         }
 
-        /* #message {
+        #message {
             position: fixed;
             display: flex;
             background-color: rgb(120, 6, 228);
@@ -306,6 +306,7 @@
             height: auto;
             border-radius: 10px;
             justify-content: center;
+            align-items: center;
             font-weight: bolder;
             font-size: 1rem;
             visibility: hidden;
@@ -315,17 +316,19 @@
             background-color: white;
             color: rgb(120, 6, 228);
             border: 1px solid rgb(120, 6, 228);
-        } */
+        }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
 </head>
 
 <body>
 
-    <!-- <div id="message"></div> -->
-    <div class="row align-items-center justify-content-center h-auto g-0 px-4 mx-2 px-sm-0 w-100">
+    <div class="messageContainer">
         <p id="message"></p>
     </div>
+    <!-- <div class="row align-items-center justify-content-center h-auto g-0 px-4 mx-2 px-sm-0 w-100">
+        <p id="message"></p>
+    </div> -->
     <!-- Navbar -->
     <div class="navbar">
         <a href="#">

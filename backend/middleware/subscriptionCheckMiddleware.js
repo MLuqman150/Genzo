@@ -28,54 +28,54 @@ const subscriptionDetailCheck = async (req, res, next) => {
     }
 
     const currentDate = new Date()
-    const subStartDate = new Date(subDetail[0].purchaseDate)
+    const subStartDate = new Date(subDetail.purchaseDate)
     const monthNumber = subStartDate.getMonth() + 1;
     const year = subStartDate.getFullYear()
 
     // console.log("User: ", userResult, " Subscription:", subDetail, "Purchase Date: ", subStartDate)
 
-    if (subDetail[0].subscriptionType == "Monthly Plan") {
+    if (subDetail.subscriptionType == "Monthly Plan") {
         const daysInMonth = getDaysInMonth(year, monthNumber)
         // console.log("Days in months: ", daysInMonth)
         const diffDays = Math.floor((currentDate - subStartDate) / (1000 * 60 * 60 * 24));
-        console.log("Days difference: ", diffDays)
+        // console.log("Days difference: ", diffDays)
         if (daysInMonth == 28 && diffDays > 28) {
-            subDetail[0].subscriptionStatus = false
-            subDetail[0].save()
+            subDetail.subscriptionStatus = false
+            subDetail.save()
             // next()
             // return res.status(403).send('Your subscription period has expired.')
         }
         else if (daysInMonth == 29 && diffDays > 29) {
-            subDetail[0].subscriptionStatus = false
-            subDetail[0].save()
+            subDetail.subscriptionStatus = false
+            subDetail.save()
             // next()
             // return res.status(403).send('Your subscription period has expired.')
         }
         else if (daysInMonth == 30 && diffDays > 30) {
-            subDetail[0].subscriptionStatus = false
-            subDetail[0].save()
+            subDetail.subscriptionStatus = false
+            subDetail.save()
             // next()
             // return res.status(403).send('Your subscription period has expired.')
         }
         else if (daysInMonth == 31 && diffDays > 31) {
-            subDetail[0].subscriptionStatus = false
-            subDetail[0].save()
+            subDetail.subscriptionStatus = false
+            subDetail.save()
             // next()
             // return res.status(403).send('Your subscription period has expired.')
         }
         else {
-            console.log("Hello, i just got executed")
+            // console.log("Hello, i just got executed")
             // return res.send("Your are currently subscribed to our Monthly Plan")
             // next()
             // return res.status(200).send('Your are currently subscribed to our Monthly Plan.')
         }
     }
-    else if (subDetail[0].subscriptionType == "Yearly Plan") {
+    else if (subDetail.subscriptionType == "Yearly Plan") {
         const daysInYear = getDaysInYear(year)
         const diffDays = Math.floor((currentDate - subStartDate) / (1000 * 60 * 60 * 24));
         if ((daysInYear == 365 && diffDays > 365) || (daysInYear == 366 && diffDays > 366)) {
-            subDetail[0].subscriptionStatus = false
-            subDetail[0].save()
+            subDetail.subscriptionStatus = false
+            subDetail.save()
             // next()
             // return res.status(403).send('Your subscription period has expired.')
         }

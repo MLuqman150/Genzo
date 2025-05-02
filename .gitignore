@@ -4,6 +4,8 @@ Frontend/node_modules
 
 Frontend/.env
 
+Frontend/dist
+
 backend/uploads
 
 backend/services/uploads
@@ -23,3 +25,4 @@ backend/weights
 backend/GroundingDINO
 
 Frontend/out
+.qodo
