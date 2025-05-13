@@ -202,7 +202,8 @@ app.on('activate', () => {
 
 // In main.js
 // const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
-const API_URL = 'http://localhost:3000/api'
+// const API_URL = 'http://localhost:3000/api'
+const API_URL = 'http://54.204.154.84:3000/api'
 
 ipcMain.on('register', async (event, userData) => {
     try {
@@ -459,7 +460,7 @@ async function processNextInQueue() {
 
         // If not cached, make request to backend
         const response = await axios.post(
-            'http://localhost:3000/imageModel/remove-background',
+            'http://54.204.154.84:3000/imageModel/remove-background',
             formData,
             {
                 headers: {
@@ -554,7 +555,7 @@ ipcMain.on('remove-human', async (event, data) => {
 
             // If not cached, make request to backend
             const response = await axios.post(
-                'http://localhost:3000/imageModel/remove-human',
+                'http://54.204.154.84:3000/imageModel/remove-human',
                 formData,
                 {
                     headers: {
@@ -748,7 +749,7 @@ ipcMain.on('remove-dummy', async (event, data) => {
 
             // Make request to backend
             const response = await axios.post(
-                'http://localhost:5000/remove-dummy',
+                'http://34.202.178.252:5000/remove-dummy',
                 formData,
                 {
                     headers: {
