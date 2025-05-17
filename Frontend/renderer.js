@@ -888,7 +888,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const token = localStorage.getItem('authToken');
                 // const priceSelect = document.getElementById('price-select');
                 // const selectedOption = priceSelect.options[priceSelect.selectedIndex];
-                const priceId = "price_1PuHu3GQqr36Qs460fS9Pvc0";
+                // price_1PuHu3GQqr36Qs460fS9Pvc0
+
+                const priceId = "price_1ROl4fGQqr36Qs46chnr6uQt";
                 // price_1PuHq2GQqr36Qs46jpbkwAaR
                 // price_1PqK5dGQqr36Qs46jCT3Kamr
                 console.log(priceId)
@@ -929,7 +931,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const token = localStorage.getItem('authToken');
                 // const priceSelect = document.getElementById('price-select');
                 // const selectedOption = priceSelect.options[priceSelect.selectedIndex];
-                const priceId = "price_1PuHucGQqr36Qs46UXec6dUw";
+                // price_1PuHucGQqr36Qs46UXec6dUw
+
+                const priceId = "price_1ROl4ZGQqr36Qs46wbCh6yIY";
                 // price_1PqK7JGQqr36Qs46An76ntuG
                 // console.log(priceId)
                 // 'price_1PqK5dGQqr36Qs46jCT3Kamr'

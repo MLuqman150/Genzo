@@ -422,13 +422,20 @@ async function createSubscription(body) {
     if (alreadySub.subscriptionStatus) {
       throw new Error("You have already subscribed");
     } else {
-      if (priceId == "price_1PuHu3GQqr36Qs460fS9Pvc0") {
+      // prod_SJNqOL2NisYjZt
+
+      // price_1PuHu3GQqr36Qs460fS9Pvc0
+      if (priceId == "price_1ROl4fGQqr36Qs46chnr6uQt") {
         alreadySub.subscriptionStatus = true;
         alreadySub.purchaseDate = new Date();
         alreadySub.subscriptionType = "Monthly Plan";
         await alreadySub.save();
         return "You have successfully subscribed for Monthly Plan.";
-      } else if (priceId == "price_1PuHucGQqr36Qs46UXec6dUw") {
+
+      }
+
+      // price_1ROl4ZGQqr36Qs46wbCh6yIY
+      else if (priceId == "price_1ROl4ZGQqr36Qs46wbCh6yIY") {
         alreadySub.subscriptionStatus = true;
         alreadySub.purchaseDate = new Date();
         alreadySub.subscriptionType = "Yearly Plan";
@@ -448,7 +455,7 @@ async function createSubscription(body) {
       : ("00000" + String(parseInt(subscription[0]._id) + 1)).slice(-4);
 
   // Monthly Plan
-  if (priceId == "price_1PuHu3GQqr36Qs460fS9Pvc0") {
+  if (priceId == "price_1ROl4fGQqr36Qs46chnr6uQt") {
     const newSubscription = new subsciptionSchema({
       _id: id,
       userId: user._id,
@@ -461,7 +468,7 @@ async function createSubscription(body) {
   }
 
   // Yearly Plan
-  else if (priceId == "price_1PuHucGQqr36Qs46UXec6dUw") {
+  else if (priceId == "price_1ROl4ZGQqr36Qs46wbCh6yIY") {
     const newSubscription = new subsciptionSchema({
       _id: id,
       userId: user._id,
