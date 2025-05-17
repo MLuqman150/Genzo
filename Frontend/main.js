@@ -63,7 +63,8 @@ function createWindow() {
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false,
-            webSecurity: false
+            webSecurity: false,
+
         },
     });
 
@@ -203,7 +204,8 @@ app.on('activate', () => {
 // In main.js
 // const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 // const API_URL = 'http://localhost:3000/api'
-const API_URL = 'http://54.204.154.84:3000/api'
+
+const API_URL = 'http://54.165.117.24:3000/api'
 
 ipcMain.on('register', async (event, userData) => {
     try {
@@ -460,7 +462,7 @@ async function processNextInQueue() {
 
         // If not cached, make request to backend
         const response = await axios.post(
-            'http://54.204.154.84:3000/imageModel/remove-background',
+            'http://54.165.117.24:3000/imageModel/remove-background',
             formData,
             {
                 headers: {
@@ -471,6 +473,8 @@ async function processNextInQueue() {
                 maxBodyLength: Infinity
             }
         );
+
+        console.log("Response: ", response)
 
         // Cache and reply with the response for each processed image
         response.data.result.forEach((result, index) => {
@@ -555,7 +559,7 @@ ipcMain.on('remove-human', async (event, data) => {
 
             // If not cached, make request to backend
             const response = await axios.post(
-                'http://54.204.154.84:3000/imageModel/remove-human',
+                'http://54.165.117.24:3000/imageModel/remove-human',
                 formData,
                 {
                     headers: {

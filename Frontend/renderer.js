@@ -212,8 +212,8 @@ document.addEventListener('DOMContentLoaded', () => {
         ipcRenderer.on('remove-background-result', (event, response) => {
             if (response.success && response.images && response.images.length > 0) {
                 processBtn.disabled = false;
-                // processBtn.textContent = 'Remove Background';
-                // message.classList.add('pop-up', 'alert', 'alert-success');
+                processBtn.textContent = 'Remove Background';
+                message.classList.add('pop-up', 'alert', 'alert-success');
                 message.style.visibility = "visible"
                 message.textContent = response.message;
                 setTimeout(() => message.setAttribute("id", "hidden"), 2000);
