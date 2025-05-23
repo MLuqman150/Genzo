@@ -5,6 +5,7 @@ import { writeFile, createReadStream, unlinkSync, existsSync } from 'node:fs';
 import { writeFile as writeFilePromise } from 'node:fs/promises';
 import FormData from 'form-data';
 import path from 'node:path';
+import fs from "fs"
 import { fileURLToPath } from 'node:url';
 import { console } from 'node:inspector';
 
@@ -79,7 +80,7 @@ function createWindow() {
     //     console.log('DOM is ready');
     // });
 
-    // mainWindow.webContents.openDevTools();
+    mainWindow.webContents.openDevTools();
 }
 
 // app.whenReady().then(createWindow);
@@ -205,7 +206,7 @@ app.on('activate', () => {
 // const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 // const API_URL = 'http://localhost:3000/api'
 
-const API_URL = 'http://54.165.117.24:3000/api'
+const API_URL = 'http://13.220.162.240:3000/api'
 
 ipcMain.on('register', async (event, userData) => {
     try {
@@ -462,7 +463,7 @@ async function processNextInQueue() {
 
         // If not cached, make request to backend
         const response = await axios.post(
-            'http://54.165.117.24:3000/imageModel/remove-background',
+            'http://13.220.162.240:3000/imageModel/remove-background',
             formData,
             {
                 headers: {
@@ -513,101 +514,220 @@ ipcMain.on('remove-background', async (event, data) => {
     console.log("Ended processing")
 });
 
-// Main process for human remover
+
 ipcMain.on('remove-human', async (event, data) => {
-    requestQueue.push({ event, data });
-    const processNextInQueue = async () => {
-        if (isProcessing || requestQueue.length === 0) return;
+    try {
+        console.log("Processing image request");
 
-        isProcessing = true;
-        const { event, data } = requestQueue.shift();
+        // For single image upload
+        if (data.image) {
+            // const imageData = data.image;
+            // const fileName = data.fileName;
 
-        try {
-            // Create form data and check if we're dealing with a single image or multiple images
+            // Convert base64 to buffer (remove data:image/... prefix if present)
+            // const base64Data = data.image.replace(/^data:image\/[a-z]+;base64,/, '');
+            // const buffer = Buffer.from(base64Data, 'base64');
+
             const formData = new FormData();
-            const images = Array.isArray(data.images) ? data.images : [{ base64: data.imageBuffer, fileName: data.fileName }];
-            if (data.backgroundColor) {
-                formData.append('backgroundColor', data.backgroundColor);
-            }
-            // Check cache and add images to formData
-            const cacheResults = [];
-            let allCached = true;
 
-            for (let imageData of images) {
-                const cacheKey = imageData.base64 || imageData.imageBuffer;
-                if (processedCache.has(cacheKey)) {
-                    cacheResults.push(processedCache.get(cacheKey));
-                } else {
-                    allCached = false;
-                    const imageBuffer = Buffer.from(cacheKey, 'base64');
-                    formData.append('files', imageBuffer, {
-                        filename: imageData.fileName,
-                        contentType: 'image/png'
-                    });
-                }
-            }
+            formData.append('image', data.image);
 
-            // If all images were cached, return the cached results
-            if (allCached) {
-                event.reply("remove-background-result", {
-                    success: true,
-                    images: cacheResults,
-                    message: "Retrieved from cache",
-                });
-                return;
-            }
+            console.log("Sending request to API");
 
-            // If not cached, make request to backend
-            const response = await axios.post(
-                'http://54.165.117.24:3000/imageModel/remove-human',
-                formData,
-                {
-                    headers: {
-                        'Authorization': `Bearer ${data.token}`,
-                        ...formData.getHeaders()
-                    },
-                    maxContentLength: Infinity,
-                    maxBodyLength: Infinity
-                }
-            );
+            console.log(formData)
 
-            // Cache and reply with the response for each processed image
-
-            response.data.result.forEach((result, index) => {
-                const cacheKey = images[index].base64 || images[index].imageBuffer;
-                processedCache.set(cacheKey, result);
-                cacheResults.push(result);
+            // Make the API request
+            const response = await axios({
+                method: 'post',
+                url: 'http://34.202.178.252:3000/remove-dummy',
+                body: formData,
+                headers: {
+                    ...formData.getHeaders()
+                },
+                // responseType: 'arraybuffer', // Important: to receive binary data
+                // maxContentLength: Infinity,
+                // maxBodyLength: Infinity
             });
 
+            console.log("Response received");
 
-            // Limit cache size
-            if (processedCache.size > 50) {
-                const firstKey = processedCache.keys().next().value;
-                processedCache.delete(firstKey);
-            }
+            // Convert response buffer to base64
+            const base64Response = Buffer.from(response.data).toString('base64');
 
+            // Send result back to renderer
             event.reply("remove-human-result", {
                 success: true,
-                images: cacheResults,
-                message: response.data.message,
+                images: [{
+                    originalFileName: fileName,
+                    base64: base64Response
+                }],
+                message: "Image processed successfully"
             });
-        } catch (error) {
-            event.reply('remove-human-result', {
-                success: false,
-                message: error.response?.data?.message || error.message
-            });
-        } finally {
-            isProcessing = false;
-            processNextInQueue();
-        }
-    }
 
-    // ipcMain.on('remove-background', async (event, data) => {
-    //     requestQueue.push({ event, data });
-    //     processNextInQueue();
-    // })
-    processNextInQueue();
+        }
+        // For multiple images (folder upload)
+        else if (data.images && data.images.length > 0) {
+            const processedImages = [];
+
+            for (const imageData of data.images) {
+                // Convert base64 to buffer
+                const base64Data = imageData.base64.replace(/^data:image\/[a-z]+;base64,/, '');
+                const buffer = Buffer.from(base64Data, 'base64');
+
+                // Create FormData for each image
+                const FormData = require('form-data');
+                const formData = new FormData();
+
+                formData.append('image', buffer, {
+                    filename: imageData.fileName,
+                    contentType: 'image/jpeg'
+                });
+
+                console.log(`Processing image: ${imageData.fileName}`);
+
+                // Make API request for each image
+                const response = await axios({
+                    method: 'post',
+                    url: 'http://34.202.178.252:3000/remove-dummy',
+                    body: formData,
+                    // headers: {
+                    //     ...formData.getHeaders()
+                    // },
+                    // responseType: 'arraybuffer',
+                    // maxContentLength: Infinity,
+                    // maxBodyLength: Infinity
+                });
+
+                // Convert response to base64
+                const base64Response = Buffer.from(response.data).toString('base64');
+
+                processedImages.push({
+                    originalFileName: imageData.fileName,
+                    base64: base64Response
+                });
+            }
+
+            // Send all processed images back to renderer
+            event.reply("remove-dummy-result", {
+                success: true,
+                images: processedImages,
+                message: `${processedImages.length} image(s) processed successfully`
+            });
+        }
+        else {
+            throw new Error('No image data provided');
+        }
+
+    } catch (error) {
+        console.error("Error processing image:", error);
+        event.reply('remove-human-result', {
+            success: false,
+            message: error.response?.data?.error || error.message || 'Failed to process image'
+        });
+    }
 });
+
+// Main process for human remover
+// ipcMain.on('remove-human', async (event, data) => {
+//     requestQueue.push({ event, data });
+//     const processNextInQueue = async () => {
+//         if (isProcessing || requestQueue.length === 0) return;
+
+//         isProcessing = true;
+//         const { event, data } = requestQueue.shift();
+
+//         try {
+//             // Create form data and check if we're dealing with a single image or multiple images
+//             const formData = new FormData();
+//             // const images = Array.isArray(data.images) ? data.images : [{ base64: data.imageBuffer, fileName: data.fileName }];
+//             // if (data.backgroundColor) {
+//             //     formData.append('backgroundColor', data.backgroundColor);
+//             // }
+//             // Check cache and add images to formData
+//             console.log("Image Data: ", data.image)
+//             formData.append('image', data.image);
+
+//             const cacheResults = [];
+//             let allCached = true;
+
+//             for (let imageData of images) {
+//                 const cacheKey = imageData.base64 || imageData.imageBuffer;
+//                 if (processedCache.has(cacheKey)) {
+//                     cacheResults.push(processedCache.get(cacheKey));
+//                 } else {
+//                     allCached = false;
+//                     const imageBuffer = Buffer.from(cacheKey, 'base64');
+//                     formData.append('files', imageBuffer, {
+//                         filename: imageData.fileName,
+//                         contentType: 'image/png'
+//                     });
+//                 }
+//             }
+
+//             // If all images were cached, return the cached results
+//             if (allCached) {
+//                 event.reply("remove-background-result", {
+//                     success: true,
+//                     images: cacheResults,
+//                     message: "Retrieved from cache",
+//                 });
+//                 return;
+//             }
+
+//             // If not cached, make request to backend
+//             const response = await axios.post(
+//                 'http://34.202.178.252:3000/remove-dummy',
+//                 {
+//                     body: formData,
+//                 }
+
+//                 // {
+//                 //     headers: {
+//                 //         'Authorization': `Bearer ${data.token}`,
+//                 //         ...formData.getHeaders()
+//                 //     },
+//                 //     maxContentLength: Infinity,
+//                 //     maxBodyLength: Infinity
+//                 // }
+//             );
+
+//             // Cache and reply with the response for each processed image
+
+//             response.data.result.forEach((result, index) => {
+//                 const cacheKey = images[index].base64 || images[index].imageBuffer;
+//                 processedCache.set(cacheKey, result);
+//                 cacheResults.push(result);
+//             });
+
+
+//             // Limit cache size
+//             if (processedCache.size > 50) {
+//                 const firstKey = processedCache.keys().next().value;
+//                 processedCache.delete(firstKey);
+//             }
+
+//             event.reply("remove-human-result", {
+//                 success: true,
+//                 images: cacheResults,
+//                 message: response.data.message,
+//             });
+//         } catch (error) {
+//             event.reply('remove-human-result', {
+//                 success: false,
+//                 message: error.response?.data?.message || error.message
+//             });
+//         } finally {
+//             isProcessing = false;
+//             processNextInQueue();
+//         }
+//     }
+
+//     // ipcMain.on('remove-background', async (event, data) => {
+//     //     requestQueue.push({ event, data });
+//     //     processNextInQueue();
+//     // })
+//     processNextInQueue();
+// });
 
 // Main process for dummy remover
 // ipcMain.on('remove-dummy', async (event, data) => {
@@ -753,7 +873,7 @@ ipcMain.on('remove-dummy', async (event, data) => {
 
             // Make request to backend
             const response = await axios.post(
-                'http://34.202.178.252:5000/remove-dummy',
+                'http://34.202.178.252:3000/remove-dummy',
                 formData,
                 {
                     headers: {
@@ -812,7 +932,9 @@ ipcMain.on('remove-dummy', async (event, data) => {
 
     processNextInQueue();
 });
+
 // async function processNextInQueueImage() {
+
 //     if (isProcessing || requestQueue.length === 0) return;
 
 //     isProcessing = true;
@@ -875,6 +997,7 @@ ipcMain.on('remove-dummy', async (event, data) => {
 
 
 // Handle file saving
+
 ipcMain.on('save-file', async (event, filePath) => {
     try {
         const { filePath: savePath } = await dialog.showSaveDialog({

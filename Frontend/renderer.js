@@ -308,89 +308,52 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
         });
-
-        // Process button click handler for both single image and folder uploads
+        // Process button click handler for single image upload
         processBtnHuman.addEventListener('click', async () => {
             const isSingleImage = imageUploadHuman.files.length > 0;
-            const isFolderUpload = folderUploadHuman.files.length > 0;
-            const token = localStorage.getItem('authToken');
-            const backgroundColor = useTransparentHuman.checked ? 'transparent' : backgroundColorPickerHuman.value;
 
             try {
+
                 processBtnHuman.disabled = true;
                 processBtnHuman.textContent = 'Processing...';
+
+
 
                 if (isSingleImage) {
                     const file = imageUploadHuman.files[0];
                     if (!file) throw new Error('Please upload an image first.');
 
-                    // Compress and convert to base64
                     const compressedBlob = await compressImage(file);
                     const base64Image = await blobToBase64(compressedBlob);
 
                     processedImageContainerHuman.innerHTML = `
-                            <div class="processing-indicator">
-                                <div class="spinner-border text-primary" role="status">
-                                <span class="visually-hidden">Processing...</span>
-                                </div>
-                                <p class="mt-2">Processing image...</p>
-                            </div>
-                            `;
+                <div class="processing-indicator">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Processing...</span>
+                    </div>
+                    <p class="mt-2">Processing image...</p>
+                </div>
+            `;
 
-
+                    // Send the file object to the main process
                     ipcRenderer.send('remove-human', {
-                        token,
-                        imageBuffer: base64Image,
-                        fileName: file.name,
-                        backgroundColor: backgroundColor
+                        image: base64Image,
+                        filename: file.name
                     });
-                } else if (isFolderUpload) {
-                    // Handle multiple images in folder upload
-                    const files = Array.from(folderUploadHuman.files).filter(file => file.type.startsWith('image/'));
-                    if (files.length === 0) throw new Error('Please upload valid image files.');
-
-                    processedImageContainerHuman.innerHTML = `
-                                <div class="processing-indicator">
-                                    <div class="spinner-border text-primary" role="status">
-                                    <span class="visually-hidden">Processing...</span>
-                                    </div>
-                                    <p class="mt-2">Processing ${files.length} image(s)...</p>
-                                </div>
-                                `;
-
-                    const processedFiles = [];
-                    for (const file of files) {
-                        const compressedBlob = await compressImage(file);
-                        const base64Image = await blobToBase64(compressedBlob);
-                        processedFiles.push({ base64: base64Image, fileName: file.name });
-                    }
-
-                    ipcRenderer.send('remove-human', {
-                        token,
-                        images: processedFiles,
-                        backgroundColor: backgroundColor
-                    });
-
-                    processBtnHuman.disabled = true;
-                    processBtnHuman.textContent = 'Processing...';
-
                 } else {
-                    throw new Error('Please upload an image or select a folder of images.');
+                    throw new Error('Please upload an image.');
                 }
             } catch (error) {
                 message.classList.add('pop-up', 'alert', 'alert-danger');
-                message.textContent = error.message || 'An error occurred while processing the image(s)';
+                console.log("error: ", error.message);
+                message.textContent = error.message || 'An error occurred while processing the image';
                 setTimeout(() => message.setAttribute("id", "hidden"), 2000);
                 processBtnHuman.disabled = false;
-                processBtnHuman.textContent = 'Remove Background';
+                processBtnHuman.textContent = 'Remove human';
             }
-            // finally {
-            //     processBtnHuman.disabled = false;
-            //     processBtnHuman.textContent = 'Remove Background';
-            // }
         });
 
-        // Handle response for both single image and folder uploads
+        // Handle response for single image upload
         ipcRenderer.on('remove-human-result', (event, response) => {
             if (response.success && response.images && response.images.length > 0) {
                 processBtnHuman.disabled = false;
@@ -400,28 +363,132 @@ document.addEventListener('DOMContentLoaded', () => {
                 setTimeout(() => message.setAttribute("id", "hidden"), 2000);
                 displayResultHuman(response.images);
 
-                if (response.images.length > 1) {
-                    document.getElementById("zip-btn").addEventListener("click", () => {
-                        downloadZip(response.images);
-                    });
-                } else {
-                    const image = response.images[0];
-                    document.getElementById("save-btn").addEventListener("click", () => {
-                        saveImage(image.filename, image.base64);
-                    });
-                }
+                const image = response.images[0];
+                document.getElementById("save-btn").addEventListener("click", () => {
+                    saveImage(image.filename, image.base64);
+                });
             } else {
                 message.classList.add('pop-up', 'alert', 'alert-danger');
-                message.textContent = response.message || 'Error processing images';
+                message.textContent = response.message || 'Error processing image';
                 setTimeout(() => message.setAttribute("id", "hidden"), 2000);
             }
             processBtnHuman.disabled = false;
             processBtnHuman.textContent = 'Remove Human';
         });
+        // Process button click handler for both single image and folder uploads
+        // processBtnHuman.addEventListener('click', async () => {
+        //     const isSingleImage = imageUploadHuman.files.length > 0;
+        //     const isFolderUpload = folderUploadHuman.files.length > 0;
+        //     const token = localStorage.getItem('authToken');
+        //     const backgroundColor = useTransparentHuman.checked ? 'transparent' : backgroundColorPickerHuman.value;
 
-        useTransparentHuman.addEventListener('change', (e) => {
-            backgroundColorPickerHuman.disabled = e.target.checked;
-        });
+        //     try {
+        //         processBtnHuman.disabled = true;
+        //         processBtnHuman.textContent = 'Processing...';
+
+        //         if (isSingleImage) {
+        //             const file = imageUploadHuman.files[0];
+        //             if (!file) throw new Error('Please upload an image first.');
+
+        //             // Compress and convert to base64
+        //             const compressedBlob = await compressImage(file);
+        //             const base64Image = await blobToBase64(compressedBlob);
+
+        //             processedImageContainerHuman.innerHTML = `
+        //                     <div class="processing-indicator">
+        //                         <div class="spinner-border text-primary" role="status">
+        //                         <span class="visually-hidden">Processing...</span>
+        //                         </div>
+        //                         <p class="mt-2">Processing image...</p>
+        //                     </div>
+        //                     `;
+
+
+        //             ipcRenderer.send('remove-human', {
+        //                 // token,
+        //                 image: file,
+        //                 // fileName: file.name,
+        //                 // backgroundColor: backgroundColor
+        //             });
+        //         } else if (isFolderUpload) {
+        //             // Handle multiple images in folder upload
+        //             const files = Array.from(folderUploadHuman.files).filter(file => file.type.startsWith('image/'));
+        //             if (files.length === 0) throw new Error('Please upload valid image files.');
+
+        //             processedImageContainerHuman.innerHTML = `
+        //                         <div class="processing-indicator">
+        //                             <div class="spinner-border text-primary" role="status">
+        //                             <span class="visually-hidden">Processing...</span>
+        //                             </div>
+        //                             <p class="mt-2">Processing ${files.length} image(s)...</p>
+        //                         </div>
+        //                         `;
+
+        //             const processedFiles = [];
+        //             for (const file of files) {
+        //                 const compressedBlob = await compressImage(file);
+        //                 const base64Image = await blobToBase64(compressedBlob);
+        //                 processedFiles.push({ base64: base64Image, fileName: file.name });
+        //             }
+
+        //             ipcRenderer.send('remove-human', {
+        //                 token,
+        //                 images: processedFiles,
+        //                 backgroundColor: backgroundColor
+        //             });
+
+        //             processBtnHuman.disabled = true;
+        //             processBtnHuman.textContent = 'Processing...';
+
+        //         } else {
+        //             throw new Error('Please upload an image or select a folder of images.');
+        //         }
+        //     } catch (error) {
+        //         message.classList.add('pop-up', 'alert', 'alert-danger');
+        //         console.log("error: ", error.message)
+        //         message.textContent = error.message || 'An error occurred while processing the image(s)';
+        //         setTimeout(() => message.setAttribute("id", "hidden"), 2000);
+        //         processBtnHuman.disabled = false;
+        //         processBtnHuman.textContent = 'Remove Background';
+        //     }
+        //     // finally {
+        //     //     processBtnHuman.disabled = false;
+        //     //     processBtnHuman.textContent = 'Remove Background';
+        //     // }
+        // });
+
+        // // Handle response for both single image and folder uploads
+        // ipcRenderer.on('remove-human-result', (event, response) => {
+        //     if (response.success && response.images && response.images.length > 0) {
+        //         processBtnHuman.disabled = false;
+        //         processBtnHuman.textContent = 'Remove Human';
+        //         message.classList.add('pop-up', 'alert', 'alert-success');
+        //         message.textContent = response.message;
+        //         setTimeout(() => message.setAttribute("id", "hidden"), 2000);
+        //         displayResultHuman(response.images);
+
+        //         if (response.images.length > 1) {
+        //             document.getElementById("zip-btn").addEventListener("click", () => {
+        //                 downloadZip(response.images);
+        //             });
+        //         } else {
+        //             const image = response.images[0];
+        //             document.getElementById("save-btn").addEventListener("click", () => {
+        //                 saveImage(image.filename, image.base64);
+        //             });
+        //         }
+        //     } else {
+        //         message.classList.add('pop-up', 'alert', 'alert-danger');
+        //         message.textContent = response.message || 'Error processing images';
+        //         setTimeout(() => message.setAttribute("id", "hidden"), 2000);
+        //     }
+        //     processBtnHuman.disabled = false;
+        //     processBtnHuman.textContent = 'Remove Human';
+        // });
+
+        // useTransparentHuman.addEventListener('change', (e) => {
+        //     backgroundColorPickerHuman.disabled = e.target.checked;
+        // });
     }
 
     if (uploadAreaDummy && imageUploadDummy || folderUploadAreaDummy && folderUploadDummy) {
@@ -652,11 +719,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (images.length === 1) {
             // Single image display
             const image = images[0];
-            processedImageContainerHuman.innerHTML = `
+            processedImageContainerDummy.innerHTML = `
                 <h3>Processed Image:</h3>
                 <div class="processed-image-container">
                 <div class="img-container"></div>
-                    <img src="${image.base64}" alt="Processed Image" class="processed-image">
+                    <img src="data:image/png;base64,${image.base64}" alt="Processed Image" class="processed-image">
                     <button class="btn btn-primary mt-2" id="save-btn" >
                         Download Image
                     </button>
@@ -672,7 +739,7 @@ document.addEventListener('DOMContentLoaded', () => {
             images.forEach(image => {
                 html += `
                     <div class="processed-image-item">
-                        <img src="${image.base64}" alt="${image.filename}" class="processed-image">
+                        <img src="data:image/png;base64,${image.base64}" alt="${image.originalFileName}" class="processed-image">
                     </div>
                 `;
             });
@@ -684,7 +751,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </button>
             `;
 
-            processedImageContainerHuman.innerHTML = html;
+            processedImageContainerDummy.innerHTML = html;
         }
     }
 
